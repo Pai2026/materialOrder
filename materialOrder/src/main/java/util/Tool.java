@@ -88,47 +88,6 @@ public class Tool {
         }
     }
 
-    // --- 資料庫業務邏輯 ---
-
-    // 取得單一材料庫存
-    public static int getStock(String materialName) {
-        String sql = "SELECT qty FROM inventory WHERE material_name = ?";
- 
-        try (Connection conn = getDb();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            
-            ps.setString(1, materialName);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("qty");
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("讀取庫存失敗：" + materialName);
-            e.printStackTrace();
-        }
-        return 0;
-    }
-
-    // 更新庫存
-    public static void updateStock(String name, int deductQty) {
-        if (deductQty <= 0) return;
-        String sql = "UPDATE inventory SET qty = qty - ? WHERE material_name = ?";
-        
-        try (Connection conn = getDb();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            
-            ps.setInt(1, deductQty);
-            ps.setString(2, name);
-            ps.executeUpdate();
-            System.out.println("庫存更新成功: " + name + " 扣除 " + deductQty);
-            
-        } catch (SQLException e) {
-            System.err.println("更新庫存失敗: " + name);
-            e.printStackTrace();
-        }
-    }
-
     public static void addOrderToDb(Order o, String orderNo) {
        
         String sql = "INSERT INTO orders (order_no, customer_id, buyer_id, material_id, supplier_id, " +

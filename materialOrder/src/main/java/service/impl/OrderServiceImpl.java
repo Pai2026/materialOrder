@@ -8,12 +8,16 @@ import java.util.stream.Collectors;
 import dao.OrderDao;
 import dao.impl.OrderDaoImpl;
 import model.Order;
+import service.InventoryService;         
 import service.OrderService;
 import util.Tool;
 
 public class OrderServiceImpl implements OrderService {
     
     private final OrderDao orderDao = new OrderDaoImpl();
+    
+    
+    private final InventoryService inventoryService = new InventoryServiceImpl();
 
     // --- Create ---
     @Override
@@ -25,7 +29,7 @@ public class OrderServiceImpl implements OrderService {
         return false;
     }
 
-    // --- Read (新增與優化) ---
+    // --- Read
     @Override
     public List<Order> allOrder() {
         return orderDao.selectAll();
@@ -38,7 +42,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<Order> findByKeyword(String keyword) {
-        // 透過 Stream API 進行模糊篩選 (名稱或 ID)
+                               
         return orderDao.selectAll().stream()
             .filter(o -> o.getMaterialName().contains(keyword) || 
                          String.valueOf(o.getMaterialId()).contains(keyword))
@@ -76,19 +80,24 @@ public class OrderServiceImpl implements OrderService {
     public String checkout(List<Order> list) {
         if (list == null || list.isEmpty()) return "empty";
         
-        // 生成 14 位數訂單編號 (例如: 20240520143005)
+        // 生成 14 位數訂單編號
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
         String orderNo = sdf.format(new Date());
         
         try {
             for (Order o : list) {
-                // 1. 寫入資料庫
+                // 1. 寫入資料庫 
                 Tool.addOrderToDb(o, orderNo);
-                // 2. 同步扣除庫存 (使用庫存更新工具)
-                Tool.updateStock(o.getMaterialName(), o.getDeductQty());
+                
+                // 2. 同步扣除庫存
+                // 先確認有填寫扣庫數 (>0) 才去執行，避免浪費資源操作資料庫
+                if (o.getDeductQty() != null && o.getDeductQty() > 0) {
+                    inventoryService.reduceStock(o.getMaterialId(), o.getDeductQty());
+                }
             }
             return orderNo;
         } catch (Exception e) {
+           
             e.printStackTrace();
             return "error";
         }
